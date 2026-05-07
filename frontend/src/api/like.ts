@@ -1,6 +1,13 @@
 import request from './request'
 import type { ApiResponse } from '@/types'
 
-export const toggleLike = (postId: number) => {
-  return request.post<ApiResponse<{ isLiked: boolean; likeCount: number }>>(`/posts/${postId}/like`)
+export interface LikeResult {
+  is_liked: boolean
+  like_count: number
+}
+
+export const likeApi = {
+  toggleLike(postId: number) {
+    return request.post<ApiResponse<LikeResult>>(`/posts/${postId}/like`)
+  }
 }

@@ -1,24 +1,40 @@
 import request from './request'
-import type { ApiResponse, AuthResponse, User } from '@/types'
+import type { ApiResponse, LoginData, User } from '@/types'
 
-export const register = (data: { username: string; password: string; nickname: string }) => {
-  return request.post<ApiResponse<AuthResponse>>('/auth/register', data)
-}
+export const userApi = {
+  register(username: string, password: string, nickname: string) {
+    return request.post<ApiResponse<LoginData>>('/auth/register', {
+      username,
+      password,
+      nickname
+    })
+  },
 
-export const login = (data: { username: string; password: string }) => {
-  return request.post<ApiResponse<AuthResponse>>('/auth/login', data)
-}
+  login(username: string, password: string) {
+    return request.post<ApiResponse<LoginData>>('/auth/login', {
+      username,
+      password
+    })
+  },
 
-export const getProfile = () => {
-  return request.get<ApiResponse<User>>('/user/profile')
-}
+  getProfile() {
+    return request.get<ApiResponse<User>>('/user/profile')
+  },
 
-export const updateProfile = (data: FormData) => {
-  return request.put<ApiResponse<User>>('/user/profile', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
-}
+  getUserById(userId: number) {
+    return request.get<ApiResponse<User>>(`/user/${userId}`)
+  },
 
-export const getUserById = (id: number) => {
-  return request.get<ApiResponse<User>>(`/user/${id}`)
+  updateProfile(data: { nickname?: string; avatar?: File }) {
+    const formData = new FormData()
+    if (data.nickname) {
+      formData.append('nickname', data.nickname)
+    }
+    if (data.avatar) {
+      formData.append('avatar', data.avatar)
+    }
+    return request.put<ApiResponse<User>>('/user/profile', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
 }

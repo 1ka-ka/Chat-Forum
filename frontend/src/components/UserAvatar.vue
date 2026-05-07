@@ -1,18 +1,33 @@
-<template>
-  <el-avatar :size="size" :src="user?.avatarUrl" v-if="user">
-    {{ user.nickname?.charAt(0)?.toUpperCase() }}
-  </el-avatar>
-</template>
-
 <script setup lang="ts">
-import type { User } from '@/types'
+import { ElAvatar } from 'element-plus'
+import { computed } from 'vue'
 
-interface Props {
-  user?: User | null
-  size?: 'large' | 'default' | 'small' | number
-}
+const props = defineProps<{
+  src?: string
+  size?: number | string
+  nickname?: string
+}>()
 
-withDefaults(defineProps<Props>(), {
-  size: 'default'
+const avatarSrc = computed(() => {
+  if (props.src) {
+    return props.src.startsWith('http') ? props.src : props.src
+  }
+  return '/default-avatar.png'
+})
+
+const initials = computed(() => {
+  if (props.nickname) {
+    return props.nickname.charAt(0).toUpperCase()
+  }
+  return 'U'
 })
 </script>
+
+<template>
+  <ElAvatar
+    :size="size || 40"
+    :src="avatarSrc"
+  >
+    {{ initials }}
+  </ElAvatar>
+</template>

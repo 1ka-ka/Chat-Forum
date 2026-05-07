@@ -1,131 +1,108 @@
-<template>
-  <div class="profile-page">
-    <el-card>
-      <template #header>
-        <h2>个人中心</h2>
-      </template>
-      <div class="profile-info">
-        <div class="avatar-section">
-          <UserAvatar :user="user" :size="100" />
-          <el-upload
-            :show-file-list="false"
-            :before-upload="beforeUpload"
-            :on-change="handleAvatarChange"
-            :auto-upload="false"
-            accept="image/*"
-          >
-            <el-button>更换头像</el-button>
-          </el-upload>
-        </div>
-        <el-form :model="form" label-width="100px">
-          <el-form-item label="用户名">
-            <el-input v-model="form.username" disabled />
-          </el-form-item>
-          <el-form-item label="昵称">
-            <el-input v-model="form.nickname" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleSave" :loading="loading">保存</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-    </el-card>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted } from 'vue'
+import { ElAvatar, ElButton, ElInput, ElMessage, ElSpin } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { getProfile, updateProfile } from '@/api/user'
-import UserAvatar from '@/components/UserAvatar.vue'
 
 const userStore = useUserStore()
 
-const user = ref(userStore.userInfo)
+const nickname = ref('')
+const avatarFile = ref<File | null>(null)
+const avatarPreview = ref('')
 const loading = ref(false)
-const newAvatar = ref<File | null>(null)
 
-const form = reactive({
-  username: '',
-  nickname: ''
-})
-
-const loadProfile = async () => {
-  try {
-    const res = await getProfile()
-    form.username = res.data.username || ''
-    form.nickname = res.data.nickname
-    user.value = res.data
-  } catch (e) {}
-}
-
-const beforeUpload = (file: File) => {
-  const isImg = file.type.startsWith('image/')
-  if (!isImg) {
-    ElMessage.error('只能上传图片')
-    return false
-  }
-  const isLt = file.size / 1024 / 1024 < 2
-  if (!isLt) {
-    ElMessage.error('图片大小不能超过2MB')
-    return false
-  }
-  newAvatar.value = file
-  return false
-}
-
-const handleAvatarChange = (file: any) => {
-  if (file.raw) {
-    newAvatar.value = file.raw
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (user.value) {
-        user.value.avatarUrl = e.target?.result as string
-      }
-    }
-    reader.readAsDataURL(file.raw)
+function handleAvatarChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    avatarFile.value = target.files[0]
+    avatarPreview.value = URL.createObjectURL(target.files[0])
   }
 }
 
-const handleSave = async () => {
+async function handleSave() {
+  if (!nickname.value.trim()) {
+    ElMessage.warning('请输入昵称')
+    return
+  }
+
   loading.value = true
   try {
-    const formData = new FormData()
-    formData.append('nickname', form.nickname)
-    if (newAvatar.value) {
-      formData.append('avatar', newAvatar.value)
-    }
-    const res = await updateProfile(formData)
-    userStore.updateUserInfo(res.data)
-    ElMessage.success('保存成功')
-  } catch (e) {
+    await userStore.updateProfile({
+      nickname: nickname.value,
+      avatar: avatarFile.value || undefined
+    })
+    ElMessage.success('更新成功')
+  } catch {
+    // error handled by interceptor
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
-  loadProfile()
+  if (userStore.user) {
+    nickname.value = userStore.user.nickname
+    avatarPreview.value = userStore.user.avatar_url
+  }
 })
 </script>
 
+<template>
+  <div class="profile-view">
+    <div class="profile-card">
+      <h1>个人中心</h1>
+
+      <ElSpin :spinning="loading">
+        <div class="avatar-section">
+          <ElAvatar :size="100" :src="avatarPreview || '/default-avatar.png'" />
+          <div class="avatar-upload">
+            <input type="file" accept="image/*" @change="handleAvatarChange" />
+            <span>点击更换头像</span>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-item">
+            <label>用户名</label>
+            <span class="username">{{ userStore.user?.username }}</span>
+          </div>
+
+          <div class="form-item">
+            <label>昵称</label>
+            <ElInput v-model="nickname" placeholder="请输入昵称" />
+          </div>
+
+          <div class="form-item">
+            <label>注册时间</label>
+            <span>{{ userStore.user?.created_at || '-' }}</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <ElButton type="primary" :loading="loading" @click="handleSave">
+            保存修改
+          </ElButton>
+        </div>
+      </ElSpin>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.profile-page {
+.profile-view {
   max-width: 600px;
   margin: 0 auto;
 }
 
-.profile-page h2 {
-  margin: 0;
-  color: #303133;
+.profile-card {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
 }
 
-.profile-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px 0;
+.profile-card h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #333;
 }
 
 .avatar-section {
@@ -133,6 +110,52 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
+}
+
+.avatar-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.avatar-upload input {
+  width: 80px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.avatar-upload span {
+  font-size: 12px;
+  color: #409eff;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-item label {
+  width: 80px;
+  color: #666;
+}
+
+.form-item .username {
+  color: #333;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
 }
 </style>

@@ -1,48 +1,57 @@
-import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { getToken, setToken, removeToken, getUser, setUser, removeUser } from '@/utils/auth'
-import type { User, AuthResponse } from '@/types'
+import { ref } from 'vue'
+import type { User } from '@/types'
+import { setToken, removeToken, isLoggedIn } from '@/utils/auth'
+import { userApi } from '@/api/user'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref<string | null>(getToken())
-  const userInfo = ref<User | null>(getUser())
+  const user = ref<User | null>(null)
+  const token = ref<string | null>(null)
 
-  const isLoggedIn = computed(() => !!token.value)
-  const userId = computed(() => userInfo.value?.id)
-
-  const setAuth = (data: AuthResponse) => {
-    token.value = data.token
-    userInfo.value = {
-      id: data.id,
-      username: data.username,
-      nickname: data.nickname,
-      avatarUrl: data.avatarUrl
-    }
-    setToken(data.token)
-    setUser(userInfo.value)
+  function setUser(userData: User) {
+    user.value = userData
   }
 
-  const updateUserInfo = (info: Partial<User>) => {
-    if (userInfo.value) {
-      userInfo.value = { ...userInfo.value, ...info }
-      setUser(userInfo.value)
-    }
+  function setUserToken(userToken: string) {
+    token.value = userToken
+    setToken(userToken)
   }
 
-  const logout = () => {
+  function login(userData: User, userToken: string) {
+    user.value = userData
+    token.value = userToken
+    setToken(userToken)
+  }
+
+  function logout() {
+    user.value = null
     token.value = null
-    userInfo.value = null
     removeToken()
-    removeUser()
+  }
+
+  async function fetchProfile() {
+    if (!isLoggedIn()) return
+    try {
+      const res = await userApi.getProfile()
+      user.value = res.data
+    } catch {
+      logout()
+    }
+  }
+
+  async function updateProfile(data: { nickname?: string; avatar?: File }) {
+    const res = await userApi.updateProfile(data)
+    user.value = res.data
   }
 
   return {
+    user,
     token,
-    userInfo,
-    isLoggedIn,
-    userId,
-    setAuth,
-    updateUserInfo,
-    logout
+    setUser,
+    setUserToken,
+    login,
+    logout,
+    fetchProfile,
+    updateProfile
   }
 })

@@ -1,112 +1,111 @@
-<template>
-  <el-card class="post-card">
-    <div class="post-header">
-      <UserAvatar :user="post" />
-      <div class="user-info">
-        <span class="nickname">{{ post.nickname }}</span>
-        <span class="time">{{ post.createdAt }}</span>
-      </div>
-    </div>
-    <div class="post-content" @click="goToDetail">
-      <h3 class="post-title">{{ post.title }}</h3>
-      <p class="post-text">{{ post.content }}</p>
-      <div class="post-images" v-if="post.imageUrls && post.imageUrls.length > 0">
-        <img v-for="(img, idx) in post.imageUrls.slice(0, 3)" :key="idx" :src="img" alt="">
-      </div>
-    </div>
-    <div class="post-footer">
-      <div class="footer-item" @click.stop="handleLike">
-        <el-icon :color="post.isLiked ? '#f56c6c' : '#909399'">
-          <component :is="post.isLiked ? 'StarFilled' : 'Star'" />
-        </el-icon>
-        <span>{{ post.likeCount }}</span>
-      </div>
-      <div class="footer-item" @click="goToDetail">
-        <el-icon><ChatDotRound /></el-icon>
-        <span>{{ post.commentCount }}</span>
-      </div>
-    </div>
-  </el-card>
-</template>
-
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
-import { ElMessage } from 'element-plus'
-import { Star, StarFilled, ChatDotRound } from '@element-plus/icons-vue'
-import UserAvatar from './UserAvatar.vue'
-import { toggleLike as toggleLikeApi } from '@/api/like'
 import type { Post } from '@/types'
+import { ElCard, ElAvatar, ElButton } from 'element-plus'
+import LikeButton from './LikeButton.vue'
 
-interface Props {
+const props = defineProps<{
   post: Post
-}
+}>()
 
-const props = defineProps<Props>()
 const router = useRouter()
-const userStore = useUserStore()
 
-const goToDetail = () => {
+function goToPost() {
   router.push(`/post/${props.post.id}`)
 }
 
-const handleLike = async () => {
-  if (!userStore.isLoggedIn) {
-    ElMessage.warning('请先登录')
-    router.push('/login')
-    return
-  }
-  try {
-    const res = await toggleLikeApi(props.post.id)
-    if (res.data) {
-      props.post.isLiked = res.data.isLiked
-      props.post.likeCount = res.data.likeCount
-    }
-  } catch (e) {}
+function goToUser(e: Event) {
+  e.stopPropagation()
+  router.push(`/user/${props.post.user_id}`)
 }
 </script>
 
+<template>
+  <ElCard class="post-card" shadow="hover" @click="goToPost">
+    <div class="post-header">
+      <div class="post-author" @click="goToUser">
+        <ElAvatar :size="40" :src="post.avatar_url || '/default-avatar.png'" />
+        <div class="author-info">
+          <span class="nickname">{{ post.nickname }}</span>
+          <span class="post-time">{{ post.created_at }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="post-content">
+      <h3 class="post-title">{{ post.title }}</h3>
+      <p class="post-excerpt">{{ post.content }}</p>
+      <div v-if="post.image_urls && post.image_urls.length > 0" class="post-images">
+        <img
+          v-for="(url, index) in post.image_urls.slice(0, 3)"
+          :key="index"
+          :src="url"
+          alt="post image"
+        />
+      </div>
+    </div>
+
+    <div class="post-footer">
+      <div class="post-stats">
+        <span>👍 {{ post.like_count }}</span>
+        <span>💬 {{ post.comment_count }}</span>
+      </div>
+      <LikeButton :post-id="post.id" :initial-liked="post.is_liked" :initial-count="post.like_count" @update="post.like_count = $event" />
+    </div>
+  </ElCard>
+</template>
+
 <style scoped>
 .post-card {
-  margin-bottom: 20px;
   cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.post-card:hover {
+  transform: translateY(-2px);
 }
 
 .post-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
-.user-info {
+.post-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.author-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
 .nickname {
   font-weight: 500;
-  color: #303133;
+  color: #333;
 }
 
-.time {
+.post-time {
   font-size: 12px;
-  color: #909399;
+  color: #999;
 }
 
 .post-content {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .post-title {
   font-size: 18px;
+  font-weight: 600;
   margin-bottom: 8px;
-  color: #303133;
+  color: #333;
 }
 
-.post-text {
-  color: #606266;
+.post-excerpt {
+  color: #666;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -116,29 +115,29 @@ const handleLike = async () => {
 
 .post-images {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   margin-top: 12px;
 }
 
 .post-images img {
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 80px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 .post-footer {
   display: flex;
-  gap: 24px;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid #f0f0f0;
 }
 
-.footer-item {
+.post-stats {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #909399;
-  cursor: pointer;
+  gap: 20px;
+  color: #666;
+  font-size: 14px;
 }
 </style>

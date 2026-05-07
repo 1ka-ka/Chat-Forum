@@ -1,85 +1,105 @@
-<template>
-  <div class="create-post-page">
-    <el-card>
-      <template #header>
-        <h2>发布帖子</h2>
-      </template>
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入帖子标题" />
-        </el-form-item>
-        <el-form-item label="内容" prop="content">
-          <el-input v-model="form.content" type="textarea" :rows="10" placeholder="请输入帖子内容" />
-        </el-form-item>
-        <el-form-item label="图片">
-          <ImageUpload v-model="form.images" :max-count="9" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="loading">发布</el-button>
-          <el-button @click="$router.back()">取消</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import type { FormInstance, FormRules, UploadFile } from 'element-plus'
-import { createPost } from '@/api/post'
+import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus'
+import { postApi } from '@/api/post'
 import ImageUpload from '@/components/ImageUpload.vue'
 
 const router = useRouter()
 
-const formRef = ref<FormInstance>()
+const title = ref('')
+const content = ref('')
+const images = ref<File[]>([])
 const loading = ref(false)
 
-const form = reactive({
-  title: '',
-  content: '',
-  images: [] as string[]
-})
+async function handleSubmit() {
+  if (!title.value.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  if (!content.value.trim()) {
+    ElMessage.warning('请输入内容')
+    return
+  }
 
-const rules: FormRules = {
-  title: [
-    { required: true, message: '请输入标题', trigger: 'blur' }
-  ],
-  content: [
-    { required: true, message: '请输入内容', trigger: 'blur' }
-  ]
+  loading.value = true
+  try {
+    const res = await postApi.createPost({
+      title: title.value,
+      content: content.value,
+      images: images.value
+    })
+    ElMessage.success('发帖成功')
+    router.push(`/post/${res.data.id}`)
+  } catch {
+    // error handled by interceptor
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        const formData = new FormData()
-        formData.append('title', form.title)
-        formData.append('content', form.content)
-        const res = await createPost(formData)
-        ElMessage.success('发布成功')
-        router.push(`/post/${res.data.id}`)
-      } catch (e) {
-      } finally {
-        loading.value = false
-      }
-    }
-  })
+function onImagesUpdate(files: File[]) {
+  images.value = files
 }
 </script>
 
+<template>
+  <div class="create-post-view">
+    <div class="form-container">
+      <h1>发布帖子</h1>
+
+      <ElForm @submit.prevent="handleSubmit">
+        <ElFormItem label="标题">
+          <ElInput
+            v-model="title"
+            placeholder="请输入帖子标题"
+            maxlength="200"
+            show-word-limit
+          />
+        </ElFormItem>
+
+        <ElFormItem label="内容">
+          <ElInput
+            v-model="content"
+            type="textarea"
+            :rows="10"
+            placeholder="说点什么..."
+          />
+        </ElFormItem>
+
+        <ElFormItem label="图片（可选，最多9张）">
+          <ImageUpload
+            :limit="9"
+            :max-size="5"
+            @update:files="onImagesUpdate"
+          />
+        </ElFormItem>
+
+        <ElFormItem>
+          <ElButton @click="router.back()">取消</ElButton>
+          <ElButton type="primary" :loading="loading" native-type="submit">
+            发布
+          </ElButton>
+        </ElFormItem>
+      </ElForm>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.create-post-page {
+.create-post-view {
   max-width: 800px;
   margin: 0 auto;
 }
 
-.create-post-page h2 {
-  margin: 0;
-  color: #303133;
+.form-container {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+}
+
+.form-container h1 {
+  margin-bottom: 24px;
+  color: #333;
 }
 </style>

@@ -1,108 +1,107 @@
-<template>
-  <el-header class="navbar">
-    <div class="nav-content">
-      <div class="nav-left">
-        <router-link to="/" class="logo">ChatForum</router-link>
-      </div>
-      <div class="nav-right">
-        <template v-if="userStore.isLoggedIn">
-          <router-link to="/create" class="nav-link">
-            <el-button type="primary">发帖</el-button>
-          </router-link>
-          <router-link to="/chat" class="nav-link">
-            <el-button text>消息</el-button>
-          </router-link>
-          <el-dropdown @command="handleCommand">
-            <span class="nav-link user-link">
-              <UserAvatar :user="userStore.userInfo" />
-              {{ userStore.userInfo?.nickname }}
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </template>
-        <template v-else>
-          <router-link to="/login" class="nav-link">
-            <el-button>登录</el-button>
-          </router-link>
-          <router-link to="/register" class="nav-link">
-            <el-button type="primary">注册</el-button>
-          </router-link>
-        </template>
-      </div>
-    </div>
-  </el-header>
-</template>
-
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { ElMessageBox } from 'element-plus'
-import UserAvatar from './UserAvatar.vue'
+import { ElDropdown, ElDropdownMenu, ElDropdownItem, ElAvatar } from 'element-plus'
+import { isLoggedIn } from '@/utils/auth'
 
 const router = useRouter()
 const userStore = useUserStore()
 
-const handleCommand = (command: string) => {
+const isAuthenticated = computed(() => isLoggedIn())
+const user = computed(() => userStore.user)
+
+function handleCommand(command: string) {
   if (command === 'profile') {
     router.push('/profile')
+  } else if (command === 'chat') {
+    router.push('/chat')
   } else if (command === 'logout') {
-    ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }).then(() => {
-      userStore.logout()
-      router.push('/login')
-    }).catch(() => {})
+    userStore.logout()
+    router.push('/login')
   }
 }
 </script>
 
+<template>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <RouterLink to="/" class="navbar-brand">ChatForum</RouterLink>
+
+      <div class="navbar-menu">
+        <template v-if="isAuthenticated && user">
+          <ElDropdown @command="handleCommand" trigger="click">
+            <div class="user-info">
+              <ElAvatar :size="32" :src="user.avatar_url || '/default-avatar.png'" />
+              <span class="username">{{ user.nickname }}</span>
+            </div>
+            <template #dropdown>
+              <ElDropdownMenu>
+                <ElDropdownItem command="profile">个人中心</ElDropdownItem>
+                <ElDropdownItem command="chat">私信</ElDropdownItem>
+                <ElDropdownItem command="logout" divided>退出登录</ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
+        </template>
+        <template v-else>
+          <RouterLink to="/login" class="nav-link">登录</RouterLink>
+          <RouterLink to="/register" class="nav-link">注册</RouterLink>
+        </template>
+      </div>
+    </div>
+  </nav>
+</template>
+
 <style scoped>
 .navbar {
-  background: #fff;
+  background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 0;
-  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.nav-content {
+.navbar-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
-  height: 100%;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.logo {
-  font-size: 24px;
+.navbar-brand {
+  font-size: 20px;
   font-weight: bold;
   color: #409eff;
-  text-decoration: none;
 }
 
-.nav-right {
+.navbar-menu {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .nav-link {
-  text-decoration: none;
-  color: #606266;
-  cursor: pointer;
+  color: #666;
+  font-size: 14px;
 }
 
-.user-link {
+.nav-link:hover {
+  color: #409eff;
+}
+
+.user-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+}
+
+.username {
+  font-size: 14px;
+  color: #333;
 }
 </style>

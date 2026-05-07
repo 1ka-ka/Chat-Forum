@@ -4,10 +4,7 @@
 #include "../utils/JwtUtil.h"
 #include "../utils/ValidationUtil.h"
 #include <drogon/drogon.h>
-#include <functional>
-#include <string>
-#include <iomanip>
-#include <sstream>
+#include <bcrypt/BCrypt.hpp>
 
 void UserService::registerUser(const std::string &username,
                                 const std::string &password,
@@ -178,20 +175,12 @@ void UserService::updateProfile(int64_t userId,
 
 std::string UserService::hashPassword(const std::string &password)
 {
-    std::hash<std::string> hasher;
-    size_t hash = hasher(password + "chatforum_salt_2025");
-    std::stringstream ss;
-    ss << std::hex << hash;
-    std::string result = ss.str();
-    while (result.length() < 16) {
-        result = "0" + result;
-    }
-    return result;
+    return BCrypt::generateHash(password);
 }
 
 bool UserService::verifyPassword(const std::string &password, const std::string &hash)
 {
-    return hashPassword(password) == hash;
+    return BCrypt::validatePassword(password, hash);
 }
 
 std::string UserService::getJwtSecret() const

@@ -1,11 +1,11 @@
 USE chatforum;
 
--- 插入测试用户（密码均为 123456）
--- hash("123456" + "chatforum_salt_2025")
+-- 插入测试用户（密码均为 123456 的 bcrypt 哈希）
+-- bcrypt hash for "123456": $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 INSERT INTO users (username, password_hash, nickname, avatar_url) VALUES
-  ('alice',   'c598f431', '爱丽丝', ''),
-  ('bob',     'c598f431', '鲍勃',   ''),
-  ('charlie', 'c598f431', '查理',   '');
+  ('alice',   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '爱丽丝', ''),
+  ('bob',     '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '鲍勃',   ''),
+  ('charlie', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '查理',   '');
 
 -- 插入测试帖子
 INSERT INTO posts (user_id, title, content, image_urls, like_count, comment_count) VALUES

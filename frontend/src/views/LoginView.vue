@@ -1,102 +1,115 @@
-<template>
-  <div class="login-page">
-    <el-card class="login-card">
-      <template #header>
-        <h2>登录</h2>
-      </template>
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password @keyup.enter="handleLogin" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleLogin" :loading="loading" style="width: 100%">登录</el-button>
-        </el-form-item>
-        <div class="footer-link">
-          还没有账号？<router-link to="/register">立即注册</router-link>
-        </div>
-      </el-form>
-    </el-card>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
+import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus'
+import { userApi } from '@/api/user'
 import { useUserStore } from '@/stores/user'
-import { login } from '@/api/user'
 
 const router = useRouter()
 const userStore = useUserStore()
 
-const formRef = ref<FormInstance>()
-const loading = ref(false)
-
-const form = reactive({
+const form = ref({
   username: '',
   password: ''
 })
+const loading = ref(false)
 
-const rules: FormRules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-  ]
-}
+async function handleLogin() {
+  if (!form.value.username || !form.value.password) {
+    ElMessage.warning('请输入用户名和密码')
+    return
+  }
 
-const handleLogin = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true
-      try {
-        const res = await login(form)
-        userStore.setAuth(res.data)
-        ElMessage.success('登录成功')
-        router.push('/')
-      } catch (e) {
-      } finally {
-        loading.value = false
-      }
-    }
-  })
+  loading.value = true
+  try {
+    const res = await userApi.login(form.value.username, form.value.password)
+    userStore.login(
+      {
+        id: res.data.id,
+        username: res.data.username,
+        nickname: res.data.nickname,
+        avatar_url: res.data.avatar_url
+      },
+      res.data.token
+    )
+    ElMessage.success('登录成功')
+    router.push('/')
+  } catch {
+    // error handled by interceptor
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
+<template>
+  <div class="login-container">
+    <div class="login-card">
+      <h2 class="login-title">登录 ChatForum</h2>
+      <ElForm @submit.prevent="handleLogin">
+        <ElFormItem>
+          <ElInput
+            v-model="form.username"
+            placeholder="用户名"
+            size="large"
+          />
+        </ElFormItem>
+        <ElFormItem>
+          <ElInput
+            v-model="form.password"
+            type="password"
+            placeholder="密码"
+            size="large"
+          />
+        </ElFormItem>
+        <ElFormItem>
+          <ElButton
+            type="primary"
+            size="large"
+            :loading="loading"
+            native-type="submit"
+            style="width: 100%"
+          >
+            登录
+          </ElButton>
+        </ElFormItem>
+      </ElForm>
+      <div class="login-footer">
+        还没有账号？<router-link to="/register">立即注册</router-link>
+      </div>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.login-page {
-  min-height: 60vh;
+.login-container {
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: 40px 0;
+  align-items: center;
+  min-height: calc(100vh - 60px);
 }
 
 .login-card {
   width: 400px;
+  padding: 40px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-.login-card h2 {
+.login-title {
   text-align: center;
-  margin: 0;
-  color: #303133;
+  margin-bottom: 30px;
+  color: #333;
 }
 
-.footer-link {
+.login-footer {
   text-align: center;
-  width: 100%;
-  font-size: 14px;
-  color: #606266;
+  margin-top: 20px;
+  color: #666;
 }
 
-.footer-link a {
+.login-footer a {
   color: #409eff;
 }
 </style>

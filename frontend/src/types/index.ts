@@ -1,85 +1,72 @@
 export interface User {
-  id: number;
-  username?: string;
-  nickname: string;
-  avatarUrl: string;
-  createdAt?: string;
-  postCount?: number;
-}
-
-export interface AuthResponse {
-  id: number;
-  username: string;
-  nickname: string;
-  avatarUrl: string;
-  token: string;
+  id: number
+  username?: string
+  nickname: string
+  avatar_url: string
+  created_at?: string
+  post_count?: number
 }
 
 export interface Post {
-  id: number;
-  userId: number;
-  title: string;
-  content: string;
-  imageUrls: string[];
-  likeCount: number;
-  commentCount: number;
-  nickname: string;
-  avatarUrl: string;
-  isLiked: boolean;
-  createdAt: string;
+  id: number
+  user_id: number
+  title: string
+  content: string
+  image_urls: string[]
+  like_count: number
+  comment_count: number
+  is_liked: boolean
+  nickname: string
+  avatar_url: string
+  created_at: string
 }
 
 export interface Comment {
-  id: number;
-  postId: number;
-  content: string;
-  userId: number;
-  nickname: string;
-  avatarUrl: string;
-  createdAt: string;
+  id: number
+  post_id: number
+  user_id: number
+  content: string
+  nickname: string
+  avatar_url: string
+  created_at: string
 }
 
 export interface Message {
-  id: number;
-  senderId: number;
-  receiverId: number;
-  content: string;
-  isRead: number;
-  createdAt: string;
+  id: number
+  sender_id: number
+  receiver_id: number
+  content: string
+  is_read: number
+  created_at: string
 }
 
 export interface Conversation {
-  userId: number;
-  nickname: string;
-  avatarUrl: string;
-  lastMessage: string;
-  lastTime: string;
-  unreadCount: number;
-}
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+  user_id: number
+  nickname: string
+  avatar_url: string
+  last_message: string
+  last_time: string
+  unread_count: number
 }
 
 export interface ApiResponse<T = any> {
-  code: number;
-  message: string;
-  data: T;
+  code: number
+  message: string
+  data: T
 }
 
-export interface WsMessage {
-  type: 'message' | 'ping' | 'pong' | 'online_status' | 'unread';
-  senderId?: number;
-  senderNickname?: string;
-  senderAvatar?: string;
-  receiverId?: number;
-  content?: string;
-  userId?: number;
-  online?: boolean;
-  messageId?: number;
-  createdAt?: string;
+export interface PageResult<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+export interface LoginData {
+  id: number
+  username: string
+  nickname: string
+  avatar_url: string
+  token: string
 }

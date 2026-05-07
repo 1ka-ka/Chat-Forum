@@ -1,23 +1,26 @@
+<script setup lang="ts">
+import { RouterView } from 'vue-router'
+import NavBar from './components/NavBar.vue'
+</script>
+
 <template>
-  <div id="app">
+  <div class="app-container">
     <NavBar />
     <main class="main-content">
-      <router-view />
+      <RouterView />
     </main>
   </div>
 </template>
 
-<script setup lang="ts">
-import NavBar from './components/NavBar.vue'
-</script>
-
-<style>
-#app {
+<style scoped>
+.app-container {
   min-height: 100vh;
+  background-color: #f5f5f5;
 }
+
 .main-content {
-  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 20px;
 }
 </style>

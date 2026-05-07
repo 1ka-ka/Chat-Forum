@@ -1,340 +1,240 @@
-<template>
-  <div class="chat-page">
-    <el-container>
-      <el-aside width="300px">
-        <div class="conversation-list">
-          <div class="list-header">会话列表</div>
-          <div class="list-content">
-            <div
-              v-for="conv in conversations"
-              :key="conv.userId"
-              class="conversation-item"
-              :class="{ active: currentUserId === conv.userId }"
-              @click="selectConversation(conv)"
-            >
-              <UserAvatar :user="{ id: conv.userId, nickname: conv.nickname, avatarUrl: conv.avatarUrl }" />
-              <div class="conv-info">
-                <div class="conv-top">
-                  <span class="nickname">{{ conv.nickname }}</span>
-                  <span class="time">{{ formatTime(conv.lastTime) }}</span>
-                </div>
-                <div class="conv-bottom">
-                  <span class="text">{{ conv.lastMessage }}</span>
-                  <el-badge :value="conv.unreadCount" class="unread-badge" v-if="conv.unreadCount > 0" />
-                </div>
-              </div>
-            </div>
-            <el-empty v-if="conversations.length === 0" description="暂无会话" />
-          </div>
-        </div>
-      </el-aside>
-      <el-main>
-        <div class="chat-window" v-if="currentUserId">
-          <div class="chat-header">
-            <UserAvatar :user="{ id: currentUserId, nickname: currentNickname, avatarUrl: currentAvatarUrl }" />
-            <span class="nickname">{{ currentNickname }}</span>
-          </div>
-          <div class="chat-messages" ref="messagesRef">
-            <div v-for="(msg, idx) in currentMessages" :key="idx" class="message-item" :class="{ 'is-me': msg.senderId === userStore.userId }">
-              <UserAvatar v-if="msg.senderId !== userStore.userId" :user="{ id: msg.senderId, nickname: '', avatarUrl: '' }" />
-              <div class="message-bubble">
-                {{ msg.content }}
-                <span class="message-time">{{ formatTime(msg.createdAt) }}</span>
-              </div>
-              <UserAvatar v-if="msg.senderId === userStore.userId" :user="userStore.userInfo" />
-            </div>
-          </div>
-          <div class="chat-input">
-            <el-input
-              v-model="message"
-              type="textarea"
-              :rows="3"
-              placeholder="输入消息..."
-              @keyup.ctrl.enter="sendMessage"
-            />
-            <el-button type="primary" @click="sendMessage" :loading="sending">发送</el-button>
-          </div>
-        </div>
-        <el-empty v-else description="请选择会话" class="empty-state" />
-      </el-main>
-    </el-container>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElInput, ElButton, ElAvatar, ElEmpty, ElSpin } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
-import { getConversations, getMessages, markAsRead } from '@/api/chat'
-import UserAvatar from '@/components/UserAvatar.vue'
-import type { Conversation, Message } from '@/types'
+import { wsManager } from '@/utils/websocket'
+import type { Message } from '@/types'
+import ChatMessage from '@/components/ChatMessage.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const chatStore = useChatStore()
 
-const conversations = ref<Conversation[]>([])
-const currentUserId = ref<number | null>(null)
-const currentMessages = ref<Message[]>([])
-const message = ref('')
-const sending = ref(false)
-const messagesRef = ref<HTMLElement>()
+const messageInput = ref('')
+const messagesContainer = ref<HTMLElement | null>(null)
 
-const currentNickname = computed(() => {
-  const conv = conversations.value.find(c => c.userId === currentUserId.value)
-  return conv?.nickname || ''
+const currentUserId = computed(() => {
+  const id = route.params.userId
+  return id ? Number(id) : null
 })
 
-const currentAvatarUrl = computed(() => {
-  const conv = conversations.value.find(c => c.userId === currentUserId.value)
-  return conv?.avatarUrl || ''
+const currentConversation = computed(() => {
+  if (!currentUserId.value) return null
+  return chatStore.conversations.find((c) => c.user_id === currentUserId.value)
 })
 
-const loadConversations = async () => {
-  try {
-    const res = await getConversations()
-    conversations.value = res.data
-    chatStore.setConversations(res.data)
-  } catch (e) {}
+async function sendMessage() {
+  if (!messageInput.value.trim() || !currentUserId.value) return
+
+  wsManager.sendMessage(currentUserId.value, messageInput.value)
+  messageInput.value = ''
 }
 
-const loadMessages = async (userId: number) => {
-  try {
-    const res = await getMessages(userId, {})
-    currentMessages.value = res.data.items.reverse()
-    chatStore.setMessages(userId, currentMessages.value)
-    await markAsRead(userId)
-  } catch (e) {}
-}
-
-const selectConversation = (conv: Conversation) => {
-  currentUserId.value = conv.userId
-  router.push(`/chat/${conv.userId}`)
-  loadMessages(conv.userId)
-}
-
-const sendMessage = () => {
-  if (!message.value.trim() || !currentUserId.value) return
-  chatStore.sendMessage(currentUserId.value, message.value)
-  const newMsg: Message = {
-    id: Date.now(),
-    senderId: userStore.userId!,
-    receiverId: currentUserId.value,
-    content: message.value,
-    isRead: 1,
-    createdAt: new Date().toISOString()
+function scrollToBottom() {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
-  currentMessages.value.push(newMsg)
-  message.value = ''
-  scrollToBottom()
 }
 
-const formatTime = (time: string) => {
-  const date = new Date(time)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().slice(0, 5)
-}
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+function handleMessage(data: any) {
+  if (data.type === 'message') {
+    const message: Message = {
+      id: data.message_id,
+      sender_id: data.sender_id,
+      receiver_id: userStore.user?.id || 0,
+      content: data.content,
+      is_read: 0,
+      created_at: data.created_at
     }
-  })
+
+    if (data.sender_id === currentUserId.value || data.receiver_id === currentUserId.value) {
+      chatStore.addMessage(message)
+      if (data.sender_id === currentUserId.value) {
+        chatStore.markAsRead(currentUserId.value!)
+      }
+    }
+
+    setTimeout(scrollToBottom, 100)
+  } else if (data.type === 'online_status') {
+    chatStore.handleOnlineStatus(data.user_id, data.online)
+  }
 }
 
-onMounted(() => {
-  loadConversations()
-  if (route.params.userId) {
-    const userId = parseInt(route.params.userId as string)
-    currentUserId.value = userId
-    loadMessages(userId)
+async function selectConversation(userId: number) {
+  router.push(`/chat/${userId}`)
+}
+
+async function loadChat() {
+  if (currentUserId.value) {
+    chatStore.setCurrentChat(currentUserId.value)
+    await chatStore.fetchMessages(currentUserId.value)
+    setTimeout(scrollToBottom, 100)
+  }
+}
+
+watch(currentUserId, async (newId) => {
+  if (newId) {
+    await loadChat()
   }
 })
 
-watch(() => route.params.userId, (newVal) => {
-  if (newVal) {
-    const userId = parseInt(newVal as string)
-    currentUserId.value = userId
-    loadMessages(userId)
+onMounted(async () => {
+  await chatStore.fetchConversations()
+  wsManager.connect()
+  wsManager.onMessage(handleMessage)
+
+  if (currentUserId.value) {
+    await loadChat()
   }
+})
+
+onUnmounted(() => {
+  chatStore.setCurrentChat(null)
 })
 </script>
 
-<style scoped>
-.chat-page {
-  height: calc(100vh - 104px);
-}
+<template>
+  <div class="chat-view">
+    <div class="conversation-list">
+      <h3>私信</h3>
+      <div
+        v-for="conv in chatStore.conversations"
+        :key="conv.user_id"
+        class="conversation-item"
+        :class="{ active: conv.user_id === currentUserId }"
+        @click="selectConversation(conv.user_id)"
+      >
+        <ElAvatar :size="44" :src="conv.avatar_url || '/default-avatar.png'" />
+        <div class="conv-info">
+          <span class="conv-name">{{ conv.nickname }}</span>
+          <span class="conv-msg">{{ conv.last_message }}</span>
+        </div>
+        <span v-if="conv.unread_count > 0" class="unread-badge">{{ conv.unread_count }}</span>
+      </div>
+      <ElEmpty v-if="chatStore.conversations.length === 0" description="暂无会话" />
+    </div>
 
-.el-container {
-  height: 100%;
-  background: #fff;
-  border-radius: 8px;
+    <div class="chat-area">
+      <template v-if="currentUserId">
+        <div class="chat-header">
+          <span>{{ currentConversation?.nickname || '聊天' }}</span>
+        </div>
+
+        <div ref="messagesContainer" class="messages-container">
+          <ChatMessage
+            v-for="msg in chatStore.currentMessages"
+            :key="msg.id"
+            :message="msg"
+          />
+        </div>
+
+        <div class="message-input">
+          <ElInput
+            v-model="messageInput"
+            placeholder="输入消息..."
+            @keyup.enter="sendMessage"
+          />
+          <ElButton type="primary" @click="sendMessage">发送</ElButton>
+        </div>
+      </template>
+      <ElEmpty v-else description="选择一个会话开始聊天" />
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.chat-view {
+  display: flex;
+  height: calc(100vh - 100px);
+  background: white;
+  border-radius: 12px;
   overflow: hidden;
 }
 
-.el-aside {
-  border-right: 1px solid #ebeef5;
-  height: 100%;
-}
-
-.el-main {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
 .conversation-list {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.list-header {
-  padding: 16px;
-  font-weight: 600;
-  border-bottom: 1px solid #ebeef5;
-  color: #303133;
-}
-
-.list-content {
-  flex: 1;
+  width: 300px;
+  border-right: 1px solid #f0f0f0;
+  padding: 20px;
   overflow-y: auto;
 }
 
+.conversation-list h3 {
+  margin-bottom: 16px;
+  color: #333;
+}
+
 .conversation-item {
-  padding: 12px 16px;
   display: flex;
+  align-items: center;
   gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.conversation-item:hover {
-  background: #f5f7fa;
-}
-
+.conversation-item:hover,
 .conversation-item.active {
-  background: #ecf5ff;
+  background: #f5f5f5;
 }
 
 .conv-info {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  min-width: 0;
+  overflow: hidden;
 }
 
-.conv-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.conv-top .nickname {
+.conv-name {
+  display: block;
   font-weight: 500;
-  color: #303133;
+  color: #333;
 }
 
-.conv-top .time {
+.conv-msg {
+  display: block;
   font-size: 12px;
-  color: #909399;
-}
-
-.conv-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.conv-bottom .text {
-  font-size: 13px;
-  color: #909399;
+  color: #999;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.chat-window {
-  height: 100%;
+.unread-badge {
+  background: #f56c6c;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.chat-area {
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .chat-header {
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.chat-header .nickname {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
   font-weight: 500;
-  color: #303133;
 }
 
-.chat-messages {
+.messages-container {
   flex: 1;
-  padding: 16px;
+  padding: 20px;
   overflow-y: auto;
 }
 
-.message-item {
+.message-input {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
 }
 
-.message-item.is-me {
-  flex-direction: row-reverse;
-}
-
-.message-bubble {
-  max-width: 60%;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: #f5f7fa;
-  color: #303133;
-  position: relative;
-}
-
-.message-item.is-me .message-bubble {
-  background: #409eff;
-  color: white;
-}
-
-.message-time {
-  display: block;
-  font-size: 11px;
-  margin-top: 8px;
-  opacity: 0.7;
-}
-
-.chat-input {
-  padding: 16px;
-  border-top: 1px solid #ebeef5;
-  display: flex;
-  gap: 12px;
-}
-
-.chat-input .el-input {
+.message-input .el-input {
   flex: 1;
-}
-
-.empty-state {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 </style>
