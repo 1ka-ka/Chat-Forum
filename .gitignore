@@ -1,0 +1,41 @@
+# Build
+build/
+cmake-build-*/
+*.exe
+*.exe.manifest
+*.dll
+*.a
+*.lib
+*.obj
+*.o
+
+# Node
+node_modules/
+frontend/.vite/
+frontend/dist/
+
+# Uploads (keep directory structure)
+uploads/*
+!uploads/images/.gitkeep
+!uploads/avatars/.gitkeep
+
+# Logs
+logs/*.log
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user
+*.sln
+*.vcxproj*
+.DS_Store
+
+# Config (with secrets)
+config/config.json
+
+# Others
+*.swp
+*.swo
+*~
