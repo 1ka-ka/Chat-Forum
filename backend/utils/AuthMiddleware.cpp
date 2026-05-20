@@ -1,36 +1,27 @@
 #include "AuthMiddleware.h"
 #include "JwtUtil.h"
 #include "ResponseUtil.h"
-#include <drogon/drogon.h>
-#include <json/json.h>
+#include "ConfigUtil.h"
 
 void AuthMiddleware::invoke(const drogon::HttpRequestPtr &req,
                             drogon::MiddlewareNextCallback &&nextCb,
-                            drogon::MiddlewareCallback &&mcb)
-{
+                            drogon::MiddlewareCallback &&mcb) {
     std::string authHeader = std::string(req->getHeader("Authorization"));
-    if (authHeader.empty() || authHeader.substr(0, 7) != "Bearer ")
-    {
-        auto resp = ResponseUtil::unauthorized();
-        mcb(resp);
+    if (authHeader.empty() || authHeader.substr(0, 7) != "Bearer ") {
+        mcb(ResponseUtil::unauthorized());
         return;
     }
 
     std::string token = authHeader.substr(7);
     std::string secret = getJwtSecret();
-
-    if (!JwtUtil::verifyToken(token, secret))
-    {
-        auto resp = ResponseUtil::unauthorized();
-        mcb(resp);
+    if (!JwtUtil::verifyToken(token, secret)) {
+        mcb(ResponseUtil::unauthorized());
         return;
     }
 
     int64_t userId = JwtUtil::getUserIdFromToken(token, secret);
-    if (userId <= 0)
-    {
-        auto resp = ResponseUtil::unauthorized();
-        mcb(resp);
+    if (userId <= 0) {
+        mcb(ResponseUtil::unauthorized());
         return;
     }
 
@@ -40,12 +31,6 @@ void AuthMiddleware::invoke(const drogon::HttpRequestPtr &req,
     });
 }
 
-std::string AuthMiddleware::getJwtSecret() const
-{
-    auto &config = drogon::app().getCustomConfig();
-    if (config.isMember("jwt") && config["jwt"].isMember("secret"))
-    {
-        return config["jwt"]["secret"].asString();
-    }
-    return "chatforum-secret-key-change-in-production-2025";
+std::string AuthMiddleware::getJwtSecret() const {
+    return ConfigUtil::getJwtSecret();
 }

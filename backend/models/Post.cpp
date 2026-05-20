@@ -1,66 +1,56 @@
 #include "Post.h"
 
-Json::Value Post::toJson(bool truncateContent) const
+Json::Value Post::toJson() const
 {
     Json::Value val;
-    val["id"] = id;
-    val["title"] = title;
-    std::string displayContent = content;
-    if (truncateContent && displayContent.length() > 100)
+    val["id"] = static_cast<Json::Int64>(_id);
+    val["userId"] = static_cast<Json::Int64>(_userId);
+    val["title"] = _title;
+    val["content"] = _content;
+
+    if (_imageUrls.has_value())
     {
-        displayContent = displayContent.substr(0, 100) + "...";
+        Json::Value images;
+        Json::CharReaderBuilder builder;
+        std::istringstream stream(_imageUrls.value());
+        std::string errors;
+        if (Json::parseFromStream(builder, stream, &images, &errors))
+        {
+            val["imageUrls"] = images;
+        }
+        else
+        {
+            val["imageUrls"] = Json::arrayValue;
+        }
     }
-    val["content"] = displayContent;
-    Json::Value imgs(Json::arrayValue);
-    for (const auto &url : imageUrls)
+    else
     {
-        imgs.append(url);
+        val["imageUrls"] = Json::arrayValue;
     }
-    val["image_urls"] = imgs;
-    val["user_id"] = userId;
-    val["nickname"] = nickname;
-    val["avatar_url"] = avatarUrl;
-    val["like_count"] = likeCount;
-    val["comment_count"] = commentCount;
-    val["is_liked"] = isLiked;
-    val["created_at"] = createdAt;
+
+    val["likeCount"] = _likeCount;
+    val["commentCount"] = _commentCount;
+    val["createdAt"] = _createdAt;
+    val["updatedAt"] = _updatedAt;
     return val;
 }
 
-Post Post::fromRow(const Json::Value &row)
+Post Post::fromResult(const drogon::orm::Row& row)
 {
-    Post p;
-    p.id = row.isMember("id") ? row["id"].asInt64() : 0;
-    p.userId = row.isMember("user_id") ? row["user_id"].asInt64() : 0;
-    p.title = row.isMember("title") ? row["title"].asString() : "";
-    p.content = row.isMember("content") ? row["content"].asString() : "";
-    if (row.isMember("image_urls") && !row["image_urls"].isNull())
+    Post post;
+    post._id = row["id"].as<int64_t>();
+    post._userId = row["user_id"].as<int64_t>();
+    post._title = row["title"].as<std::string>();
+    post._content = row["content"].as<std::string>();
+
+    if (!row["image_urls"].isNull())
     {
-        std::string imgsStr = row["image_urls"].asString();
-        if (!imgsStr.empty())
-        {
-            Json::Value imgs;
-            Json::CharReaderBuilder builder;
-            std::istringstream stream(imgsStr);
-            std::string errs;
-            if (Json::parseFromStream(builder, stream, &imgs, &errs))
-            {
-                if (imgs.isArray())
-                {
-                    for (const auto &img : imgs)
-                    {
-                        p.imageUrls.push_back(img.asString());
-                    }
-                }
-            }
-        }
+        post._imageUrls = row["image_urls"].as<std::string>();
     }
-    p.likeCount = row.isMember("like_count") ? row["like_count"].asInt() : 0;
-    p.commentCount = row.isMember("comment_count") ? row["comment_count"].asInt() : 0;
-    p.createdAt = row.isMember("created_at") ? row["created_at"].asString() : "";
-    p.updatedAt = row.isMember("updated_at") ? row["updated_at"].asString() : "";
-    p.nickname = row.isMember("nickname") ? row["nickname"].asString() : "";
-    p.avatarUrl = row.isMember("avatar_url") ? row["avatar_url"].asString() : "";
-    p.isLiked = row.isMember("is_liked") ? row["is_liked"].asBool() : false;
-    return p;
+
+    post._likeCount = row["like_count"].as<int>();
+    post._commentCount = row["comment_count"].as<int>();
+    post._createdAt = row["created_at"].as<std::string>();
+    post._updatedAt = row["updated_at"].as<std::string>();
+    return post;
 }

@@ -16,9 +16,9 @@ export const postApi = {
     })
   },
 
-  getPostList(page: number = 1, pageSize: number = 20) {
+  getPostList(page: number = 1, pageSize: number = 20, search: string = '') {
     return request.get<ApiResponse<PageResult<Post>>>('/posts', {
-      params: { page, page_size: pageSize }
+      params: { page, page_size: pageSize, search }
     })
   },
 

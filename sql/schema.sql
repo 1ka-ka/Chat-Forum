@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_users_username (username)
+  UNIQUE KEY uk_users_username (username),
+  UNIQUE KEY uk_users_nickname (nickname)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 帖子表
@@ -36,16 +37,19 @@ CREATE TABLE IF NOT EXISTS posts (
 
 -- 评论表
 CREATE TABLE IF NOT EXISTS comments (
-  id            BIGINT        NOT NULL AUTO_INCREMENT,
-  post_id       BIGINT        NOT NULL,
-  user_id       BIGINT        NOT NULL,
-  content       TEXT          NOT NULL,
-  created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id               BIGINT        NOT NULL AUTO_INCREMENT,
+  post_id          BIGINT        NOT NULL,
+  user_id          BIGINT        NOT NULL,
+  parent_comment_id BIGINT       DEFAULT NULL,
+  content          TEXT          NOT NULL,
+  created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_comments_post_id (post_id),
   KEY idx_comments_user_id (user_id),
+  KEY idx_comments_parent (parent_comment_id),
   CONSTRAINT fk_comments_post_id FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_comments_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  CONSTRAINT fk_comments_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_comments_parent FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 点赞表
@@ -75,4 +79,22 @@ CREATE TABLE IF NOT EXISTS messages (
   KEY idx_messages_conversation (LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id), created_at DESC),
   CONSTRAINT fk_messages_sender_id FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_messages_receiver_id FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 通知表
+CREATE TABLE IF NOT EXISTS notifications (
+  id             BIGINT        NOT NULL AUTO_INCREMENT,
+  user_id        BIGINT        NOT NULL,
+  actor_id       BIGINT        NOT NULL,
+  type           VARCHAR(20)   NOT NULL,
+  post_id        BIGINT        DEFAULT NULL,
+  comment_id     BIGINT        DEFAULT NULL,
+  message        VARCHAR(500)  NOT NULL DEFAULT '',
+  is_read        TINYINT       NOT NULL DEFAULT 0,
+  created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_notifications_user (user_id, is_read, created_at DESC),
+  KEY idx_notifications_actor (actor_id),
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

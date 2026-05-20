@@ -4,7 +4,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{
   src?: string
-  size?: number | string
+  size?: number
   nickname?: string
 }>()
 
@@ -21,11 +21,15 @@ const initials = computed(() => {
   }
   return 'U'
 })
+
+const avatarSize = computed(() => {
+  return props.size || 40
+})
 </script>
 
 <template>
   <ElAvatar
-    :size="size || 40"
+    :size="avatarSize"
     :src="avatarSrc"
   >
     {{ initials }}

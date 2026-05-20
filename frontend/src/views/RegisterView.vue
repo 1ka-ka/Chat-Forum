@@ -3,10 +3,8 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus'
 import { userApi } from '@/api/user'
-import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
-const userStore = useUserStore()
 
 const form = ref({
   username: '',
@@ -23,24 +21,14 @@ async function handleRegister() {
 
   loading.value = true
   try {
-    const res = await userApi.register(
+    await userApi.register(
       form.value.username,
       form.value.password,
       form.value.nickname
     )
-    userStore.login(
-      {
-        id: res.data.id,
-        username: res.data.username,
-        nickname: res.data.nickname,
-        avatar_url: ''
-      },
-      res.data.token
-    )
-    ElMessage.success('注册成功')
-    router.push('/')
+    ElMessage.success('注册成功，请登录')
+    router.push('/login')
   } catch {
-    // error handled by interceptor
   } finally {
     loading.value = false
   }
@@ -50,19 +38,19 @@ async function handleRegister() {
 <template>
   <div class="register-container">
     <div class="register-card">
-      <h2 class="register-title">注册 ChatForum</h2>
+      <h2 class="register-title">注册 畅谈</h2>
       <ElForm @submit.prevent="handleRegister">
         <ElFormItem>
           <ElInput
             v-model="form.username"
-            placeholder="用户名（3-50位字母数字下划线）"
+            placeholder="账号（3-50位字母数字下划线，用于登录，不可修改）"
             size="large"
           />
         </ElFormItem>
         <ElFormItem>
           <ElInput
             v-model="form.nickname"
-            placeholder="昵称（1-50位字符）"
+            placeholder="用户名（1-50位字符，对外显示，可修改但需唯一）"
             size="large"
           />
         </ElFormItem>
@@ -94,34 +82,9 @@ async function handleRegister() {
 </template>
 
 <style scoped>
-.register-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - 60px);
-}
-
-.register-card {
-  width: 400px;
-  padding: 40px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.register-title {
-  text-align: center;
-  margin-bottom: 30px;
-  color: #333;
-}
-
-.register-footer {
-  text-align: center;
-  margin-top: 20px;
-  color: #666;
-}
-
-.register-footer a {
-  color: #409eff;
-}
+.register-container { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 60px); }
+.register-card { width: 420px; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+.register-title { text-align: center; margin-bottom: 30px; color: #333; }
+.register-footer { text-align: center; margin-top: 20px; color: #666; }
+.register-footer a { color: #409eff; }
 </style>

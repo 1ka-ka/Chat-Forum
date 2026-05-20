@@ -3,19 +3,19 @@
 Json::Value Like::toJson() const
 {
     Json::Value val;
-    val["id"] = id;
-    val["post_id"] = postId;
-    val["user_id"] = userId;
-    val["created_at"] = createdAt;
+    val["id"] = static_cast<Json::Int64>(_id);
+    val["postId"] = static_cast<Json::Int64>(_postId);
+    val["userId"] = static_cast<Json::Int64>(_userId);
+    val["createdAt"] = _createdAt;
     return val;
 }
 
-Like Like::fromRow(const Json::Value &row)
+Like Like::fromResult(const drogon::orm::Row& row)
 {
-    Like l;
-    l.id = row.isMember("id") ? row["id"].asInt64() : 0;
-    l.postId = row.isMember("post_id") ? row["post_id"].asInt64() : 0;
-    l.userId = row.isMember("user_id") ? row["user_id"].asInt64() : 0;
-    l.createdAt = row.isMember("created_at") ? row["created_at"].asString() : "";
-    return l;
+    Like like;
+    like._id = row["id"].as<int64_t>();
+    like._postId = row["post_id"].as<int64_t>();
+    like._userId = row["user_id"].as<int64_t>();
+    like._createdAt = row["created_at"].as<std::string>();
+    return like;
 }

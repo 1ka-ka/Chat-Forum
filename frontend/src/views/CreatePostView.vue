@@ -30,7 +30,7 @@ async function handleSubmit() {
       images: images.value
     })
     ElMessage.success('发帖成功')
-    router.push(`/post/${res.data.id}`)
+    router.push('/')
   } catch {
     // error handled by interceptor
   } finally {
@@ -45,6 +45,7 @@ function onImagesUpdate(files: File[]) {
 
 <template>
   <div class="create-post-view">
+    <ElButton text @click="router.push('/')">← 返回主页</ElButton>
     <div class="form-container">
       <h1>发布帖子</h1>
 

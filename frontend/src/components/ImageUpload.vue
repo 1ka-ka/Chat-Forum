@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElUpload, ElMessage } from 'element-plus'
-import type { UploadFile, UploadRawFile } from 'element-plus'
+import type { UploadFile } from 'element-plus'
 
 const props = defineProps<{
   limit?: number
@@ -14,12 +14,12 @@ const emit = defineEmits<{
 
 const fileList = ref<File[]>([])
 
-function handleExceed(files: File[], uploadFiles: any[]) {
-  ElMessage.warning(`最多只能上传 ${props.limit || 9} 个文件`)
+function getObjectURL(file: File): string {
+  return URL.createObjectURL(file)
 }
 
-function handleSizeExceed(file: File, files: File[]) {
-  ElMessage.warning(`文件 ${file.name} 大小超过限制 (${(props.maxSize || 5) / 1024 / 1024}MB)`)
+function handleExceed() {
+  ElMessage.warning(`最多只能上传 ${props.limit || 9} 个文件`)
 }
 
 function onChange(uploadFile: UploadFile, uploadFiles: any[]) {
@@ -65,7 +65,7 @@ function removeFile(index: number) {
 
     <div v-if="fileList.length > 0" class="preview-list">
       <div v-for="(file, index) in fileList" :key="index" class="preview-item">
-        <img :src="URL.createObjectURL(file)" alt="preview" />
+        <img :src="getObjectURL(file)" alt="preview" />
         <span class="remove-btn" @click="removeFile(index)">×</span>
       </div>
     </div>

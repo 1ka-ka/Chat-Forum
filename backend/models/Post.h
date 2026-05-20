@@ -1,26 +1,53 @@
 #pragma once
 
 #include <string>
-#include <vector>
+#include <cstdint>
+#include <optional>
 #include <json/json.h>
+#include <drogon/orm/Row.h>
 
 class Post
 {
 public:
-    int64_t id = 0;
-    int64_t userId = 0;
-    std::string title;
-    std::string content;
-    std::vector<std::string> imageUrls;
-    int likeCount = 0;
-    int commentCount = 0;
-    std::string createdAt;
-    std::string updatedAt;
+    int64_t getId() const { return _id; }
+    void setId(int64_t id) { _id = id; }
 
-    std::string nickname;
-    std::string avatarUrl;
-    bool isLiked = false;
+    int64_t getUserId() const { return _userId; }
+    void setUserId(int64_t userId) { _userId = userId; }
 
-    Json::Value toJson(bool truncateContent = false) const;
-    static Post fromRow(const Json::Value &row);
+    const std::string& getTitle() const { return _title; }
+    void setTitle(const std::string& title) { _title = title; }
+
+    const std::string& getContent() const { return _content; }
+    void setContent(const std::string& content) { _content = content; }
+
+    const std::optional<std::string>& getImageUrls() const { return _imageUrls; }
+    void setImageUrls(const std::optional<std::string>& imageUrls) { _imageUrls = imageUrls; }
+
+    int getLikeCount() const { return _likeCount; }
+    void setLikeCount(int likeCount) { _likeCount = likeCount; }
+
+    int getCommentCount() const { return _commentCount; }
+    void setCommentCount(int commentCount) { _commentCount = commentCount; }
+
+    const std::string& getCreatedAt() const { return _createdAt; }
+    void setCreatedAt(const std::string& createdAt) { _createdAt = createdAt; }
+
+    const std::string& getUpdatedAt() const { return _updatedAt; }
+    void setUpdatedAt(const std::string& updatedAt) { _updatedAt = updatedAt; }
+
+    Json::Value toJson() const;
+
+    static Post fromResult(const drogon::orm::Row& row);
+
+private:
+    int64_t _id = 0;
+    int64_t _userId = 0;
+    std::string _title;
+    std::string _content;
+    std::optional<std::string> _imageUrls;
+    int _likeCount = 0;
+    int _commentCount = 0;
+    std::string _createdAt;
+    std::string _updatedAt;
 };

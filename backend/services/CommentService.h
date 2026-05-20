@@ -2,8 +2,7 @@
 
 #include <string>
 #include <functional>
-#include <json/json.h>
-#include <drogon/HttpResponse.h>
+#include <drogon/drogon.h>
 
 class CommentService
 {
@@ -13,9 +12,8 @@ public:
     void createComment(int64_t postId,
                        int64_t userId,
                        const std::string &content,
+                       int64_t parentCommentId,
                        Callback &&callback);
 
-    void getCommentsByPostId(int64_t postId,
-                             int page, int pageSize,
-                             Callback &&callback);
+    void getComments(int64_t postId, int page, int pageSize, Callback &&callback);
 };

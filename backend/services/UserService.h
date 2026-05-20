@@ -2,8 +2,7 @@
 
 #include <string>
 #include <functional>
-#include <json/json.h>
-#include <drogon/HttpResponse.h>
+#include <drogon/drogon.h>
 
 class UserService
 {
@@ -19,20 +18,18 @@ public:
                const std::string &password,
                Callback &&callback);
 
-    void getProfile(int64_t userId,
-                    Callback &&callback);
-
-    void getUserById(int64_t userId,
-                     Callback &&callback);
+    void getProfile(int64_t userId, Callback &&callback);
 
     void updateProfile(int64_t userId,
                        const std::string &nickname,
                        const std::string &avatarUrl,
                        Callback &&callback);
 
+    void getUserById(int64_t userId, Callback &&callback);
+
 private:
     std::string hashPassword(const std::string &password);
     bool verifyPassword(const std::string &password, const std::string &hash);
-    std::string getJwtSecret() const;
-    int getJwtExpiration() const;
+    std::string getJwtSecret();
+    int getJwtExpiration();
 };

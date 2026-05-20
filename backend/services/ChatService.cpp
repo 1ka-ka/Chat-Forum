@@ -1,105 +1,97 @@
 #include "ChatService.h"
 #include "../utils/ResponseUtil.h"
-#include <drogon/drogon.h>
+#include "../models/Message.h"
+
+void ChatService::saveMessage(int64_t senderId,
+                               int64_t receiverId,
+                               const std::string &content,
+                               std::function<void(int64_t)> successCallback,
+                               std::function<void()> errorCallback)
+{
+    auto dbClient = drogon::app().getDbClient();
+    dbClient->execSqlAsync(
+        "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)",
+        [successCallback = std::move(successCallback)]
+        (const drogon::orm::Result &result) mutable {
+            int64_t msgId = result.insertId();
+            successCallback(msgId);
+        },
+        [errorCallback = std::move(errorCallback)]
+        (const drogon::orm::DrogonDbException &e) mutable {
+            errorCallback();
+        },
+        senderId, receiverId, content);
+}
 
 void ChatService::getConversations(int64_t userId, Callback &&callback)
 {
     auto dbClient = drogon::app().getDbClient();
     dbClient->execSqlAsync(
-        "SELECT "
-        "CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END AS other_user_id, "
-        "u.nickname, u.avatar_url, "
-        "m.content AS last_message, "
-        "m.created_at AS last_time, "
-        "(SELECT COUNT(*) FROM messages m2 "
-        " WHERE m2.sender_id = other_user_id AND m2.receiver_id = ? AND m2.is_read = 0) AS unread_count "
-        "FROM messages m "
-        "INNER JOIN ("
-        "  SELECT LEAST(sender_id, receiver_id) AS min_id, "
-        "         GREATEST(sender_id, receiver_id) AS max_id, "
-        "         MAX(id) AS max_msg_id "
-        "  FROM messages "
-        "  WHERE sender_id = ? OR receiver_id = ? "
-        "  GROUP BY min_id, max_id"
-        ") latest ON m.id = latest.max_msg_id "
-        "LEFT JOIN users u ON u.id = CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END "
+        "SELECT u.id AS user_id, u.nickname, u.avatar_url, "
+        "m.content AS last_message, m.created_at AS last_message_time, "
+        "(SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = ? AND is_read = 0) AS unread_count "
+        "FROM users u "
+        "INNER JOIN messages m ON m.id = ("
+        "  SELECT m2.id FROM messages m2 "
+        "  WHERE (m2.sender_id = ? AND m2.receiver_id = u.id) "
+        "     OR (m2.sender_id = u.id AND m2.receiver_id = ?) "
+        "  ORDER BY m2.created_at DESC LIMIT 1"
+        ") "
+        "WHERE u.id != ? AND EXISTS ("
+        "  SELECT 1 FROM messages m3 "
+        "  WHERE (m3.sender_id = ? AND m3.receiver_id = u.id) "
+        "     OR (m3.sender_id = u.id AND m3.receiver_id = ?)"
+        ") "
         "ORDER BY m.created_at DESC",
-        [callback = std::move(callback)](const drogon::orm::Result &result) mutable {
+        [callback = std::move(callback)]
+        (const drogon::orm::Result &result) mutable {
             Json::Value items(Json::arrayValue);
             for (size_t i = 0; i < result.size(); ++i)
             {
-                auto &r = result[i];
-                Json::Value item;
-                item["user_id"] = r["other_user_id"].as<int64_t>();
-                item["nickname"] = std::string(r["nickname"].c_str());
-                item["avatar_url"] = std::string(r["avatar_url"].c_str());
-                item["last_message"] = std::string(r["last_message"].c_str());
-                item["last_time"] = std::string(r["last_time"].c_str());
-                item["unread_count"] = r["unread_count"].as<int>();
-                items.append(item);
+                Json::Value row;
+                row["user_id"] = result[i]["user_id"].as<int64_t>();
+                row["nickname"] = std::string(result[i]["nickname"].c_str());
+                row["avatar_url"] = std::string(result[i]["avatar_url"].c_str());
+                row["last_message"] = std::string(result[i]["last_message"].c_str());
+                row["last_message_time"] = std::string(result[i]["last_message_time"].c_str());
+                row["unread_count"] = result[i]["unread_count"].as<int>();
+                items.append(row);
             }
             callback(ResponseUtil::success(items));
         },
-        [callback = std::move(callback)](const drogon::orm::DrogonDbException &e) mutable {
+        [callback = std::move(callback)]
+        (const drogon::orm::DrogonDbException &e) mutable {
             callback(ResponseUtil::serverError("查询会话列表失败"));
         },
-        userId, userId, userId, userId, userId);
+        userId, userId, userId, userId, userId, userId);
 }
 
 void ChatService::getMessages(int64_t userId, int64_t otherUserId,
-                               int page, int pageSize,
-                               Callback &&callback)
+                               int page, int pageSize, Callback &&callback)
 {
-    if (page < 1) page = 1;
-    if (pageSize < 1 || pageSize > 100) pageSize = 20;
     int offset = (page - 1) * pageSize;
-
     auto dbClient = drogon::app().getDbClient();
     dbClient->execSqlAsync(
-        "SELECT COUNT(*) AS total FROM messages "
-        "WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)",
-        [this, userId, otherUserId, page, pageSize, callback = std::move(callback)](const drogon::orm::Result &countResult) mutable {
-            int total = countResult[0]["total"].as<int>();
-            int totalPages = (total + pageSize - 1) / pageSize;
-            int offset = (page - 1) * pageSize;
-
-            auto db = drogon::app().getDbClient();
-            db->execSqlAsync(
-                "SELECT id, sender_id, receiver_id, content, is_read, created_at "
-                "FROM messages "
-                "WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) "
-                "ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                [page, pageSize, total, totalPages, callback = std::move(callback)](const drogon::orm::Result &result) mutable {
-                    Json::Value items(Json::arrayValue);
-                    for (size_t i = 0; i < result.size(); ++i)
-                    {
-                        auto &r = result[i];
-                        Json::Value item;
-                        item["id"] = r["id"].as<int64_t>();
-                        item["sender_id"] = r["sender_id"].as<int64_t>();
-                        item["receiver_id"] = r["receiver_id"].as<int64_t>();
-                        item["content"] = std::string(r["content"].c_str());
-                        item["is_read"] = r["is_read"].as<int>();
-                        item["created_at"] = std::string(r["created_at"].c_str());
-                        items.append(item);
-                    }
-                    Json::Value data;
-                    data["items"] = items;
-                    data["total"] = total;
-                    data["page"] = page;
-                    data["page_size"] = pageSize;
-                    data["total_pages"] = totalPages;
-                    callback(ResponseUtil::success(data));
-                },
-                [callback = std::move(callback)](const drogon::orm::DrogonDbException &) mutable {
-                    callback(ResponseUtil::serverError("查询消息失败"));
-                },
-                userId, otherUserId, otherUserId, userId, pageSize, offset);
+        "SELECT m.id, m.sender_id, m.receiver_id, m.content, m.is_read, m.created_at "
+        "FROM messages m "
+        "WHERE (m.sender_id = ? AND m.receiver_id = ?) "
+        "   OR (m.sender_id = ? AND m.receiver_id = ?) "
+        "ORDER BY m.created_at DESC LIMIT ? OFFSET ?",
+        [callback = std::move(callback)]
+        (const drogon::orm::Result &result) mutable {
+            Json::Value items(Json::arrayValue);
+            for (size_t i = 0; i < result.size(); ++i)
+            {
+                auto msg = Message::fromResult(result[i]);
+                items.append(msg.toJson());
+            }
+            callback(ResponseUtil::success(items));
         },
-        [callback = std::move(callback)](const drogon::orm::DrogonDbException &) mutable {
-            callback(ResponseUtil::serverError("查询消息数量失败"));
+        [callback = std::move(callback)]
+        (const drogon::orm::DrogonDbException &e) mutable {
+            callback(ResponseUtil::serverError("查询消息列表失败"));
         },
-        userId, otherUserId, otherUserId, userId);
+        userId, otherUserId, otherUserId, userId, pageSize, offset);
 }
 
 void ChatService::markAsRead(int64_t userId, int64_t otherUserId, Callback &&callback)
@@ -107,28 +99,13 @@ void ChatService::markAsRead(int64_t userId, int64_t otherUserId, Callback &&cal
     auto dbClient = drogon::app().getDbClient();
     dbClient->execSqlAsync(
         "UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0",
-        [callback = std::move(callback)](const drogon::orm::Result &) mutable {
-            callback(ResponseUtil::success("已标记为已读"));
+        [callback = std::move(callback)]
+        (const drogon::orm::Result &result) mutable {
+            callback(ResponseUtil::success(Json::Value(), "标记已读成功"));
         },
-        [callback = std::move(callback)](const drogon::orm::DrogonDbException &) mutable {
+        [callback = std::move(callback)]
+        (const drogon::orm::DrogonDbException &e) mutable {
             callback(ResponseUtil::serverError("标记已读失败"));
         },
         otherUserId, userId);
-}
-
-void ChatService::saveMessage(int64_t senderId, int64_t receiverId,
-                               const std::string &content,
-                               std::function<void(int64_t)> &&onSuccess,
-                               std::function<void()> &&onError)
-{
-    auto dbClient = drogon::app().getDbClient();
-    dbClient->execSqlAsync(
-        "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)",
-        [onSuccess = std::move(onSuccess)](const drogon::orm::Result &result) mutable {
-            onSuccess(result.insertId());
-        },
-        [onError = std::move(onError)](const drogon::orm::DrogonDbException &) mutable {
-            onError();
-        },
-        senderId, receiverId, content);
 }

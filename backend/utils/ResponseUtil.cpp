@@ -1,87 +1,36 @@
 #include "ResponseUtil.h"
 
-namespace ResponseUtil
-{
-    drogon::HttpResponsePtr success(const Json::Value &data, const std::string &message)
-    {
-        Json::Value root;
-        root["code"] = 200;
-        root["message"] = message;
-        root["data"] = data;
-        auto resp = drogon::HttpResponse::newHttpJsonResponse(root);
-        resp->setStatusCode(drogon::k200OK);
-        return resp;
-    }
+static drogon::HttpResponsePtr makeResponse(int code, const std::string &message, const Json::Value &data, drogon::HttpStatusCode statusCode) {
+    Json::Value root;
+    root["code"] = code;
+    root["message"] = message;
+    root["data"] = data;
 
-    drogon::HttpResponsePtr success(const std::string &message)
-    {
-        Json::Value root;
-        root["code"] = 200;
-        root["message"] = message;
-        root["data"] = Json::nullValue;
-        auto resp = drogon::HttpResponse::newHttpJsonResponse(root);
-        resp->setStatusCode(drogon::k200OK);
-        return resp;
-    }
+    auto resp = drogon::HttpResponse::newHttpJsonResponse(root);
+    resp->setStatusCode(statusCode);
+    return resp;
+}
 
-    drogon::HttpResponsePtr error(int code, const std::string &message)
-    {
-        Json::Value root;
-        root["code"] = code;
-        root["message"] = message;
-        root["data"] = Json::nullValue;
-        auto resp = drogon::HttpResponse::newHttpJsonResponse(root);
-        switch (code)
-        {
-        case 400:
-            resp->setStatusCode(drogon::k400BadRequest);
-            break;
-        case 401:
-            resp->setStatusCode(drogon::k401Unauthorized);
-            break;
-        case 403:
-            resp->setStatusCode(drogon::k403Forbidden);
-            break;
-        case 404:
-            resp->setStatusCode(drogon::k404NotFound);
-            break;
-        case 409:
-            resp->setStatusCode(drogon::k409Conflict);
-            break;
-        default:
-            resp->setStatusCode(drogon::k500InternalServerError);
-            break;
-        }
-        return resp;
-    }
+drogon::HttpResponsePtr ResponseUtil::success(const Json::Value &data, const std::string &message) {
+    return makeResponse(200, message, data, drogon::k200OK);
+}
 
-    drogon::HttpResponsePtr badRequest(const std::string &message)
-    {
-        return error(400, message);
-    }
+drogon::HttpResponsePtr ResponseUtil::badRequest(const std::string &message) {
+    return makeResponse(400, message, Json::Value(), drogon::k400BadRequest);
+}
 
-    drogon::HttpResponsePtr unauthorized(const std::string &message)
-    {
-        return error(401, message);
-    }
+drogon::HttpResponsePtr ResponseUtil::unauthorized(const std::string &message) {
+    return makeResponse(401, message, Json::Value(), drogon::k401Unauthorized);
+}
 
-    drogon::HttpResponsePtr forbidden(const std::string &message)
-    {
-        return error(403, message);
-    }
+drogon::HttpResponsePtr ResponseUtil::notFound(const std::string &message) {
+    return makeResponse(404, message, Json::Value(), drogon::k404NotFound);
+}
 
-    drogon::HttpResponsePtr notFound(const std::string &message)
-    {
-        return error(404, message);
-    }
+drogon::HttpResponsePtr ResponseUtil::conflict(const std::string &message) {
+    return makeResponse(409, message, Json::Value(), drogon::k409Conflict);
+}
 
-    drogon::HttpResponsePtr conflict(const std::string &message)
-    {
-        return error(409, message);
-    }
-
-    drogon::HttpResponsePtr serverError(const std::string &message)
-    {
-        return error(500, message);
-    }
+drogon::HttpResponsePtr ResponseUtil::serverError(const std::string &message) {
+    return makeResponse(500, message, Json::Value(), drogon::k500InternalServerError);
 }

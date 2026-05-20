@@ -10,3 +10,11 @@ void LikeController::toggleLike(const drogon::HttpRequestPtr &req,
     LikeService service;
     service.toggleLike(postId, userId, std::move(callback));
 }
+
+void LikeController::getLikeUsers(const drogon::HttpRequestPtr &req,
+                                    std::function<void(const drogon::HttpResponsePtr &)> &&callback,
+                                    int64_t postId)
+{
+    LikeService service;
+    service.getLikeUsers(postId, std::move(callback));
+}

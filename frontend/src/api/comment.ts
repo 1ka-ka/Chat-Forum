@@ -2,9 +2,10 @@ import request from './request'
 import type { ApiResponse, Comment, PageResult } from '@/types'
 
 export const commentApi = {
-  createComment(postId: number, content: string) {
+  createComment(postId: number, content: string, parentCommentId: number | null = null) {
     return request.post<ApiResponse<Comment>>(`/posts/${postId}/comments`, {
-      content
+      content,
+      parent_comment_id: parentCommentId
     })
   },
 

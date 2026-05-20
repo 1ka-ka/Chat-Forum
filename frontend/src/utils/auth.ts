@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'chatforum_token'
+const TOKEN_KEY = 'changtan_token'
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)

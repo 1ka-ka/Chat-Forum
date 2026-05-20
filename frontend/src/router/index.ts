@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/stores/user'
 import { isLoggedIn } from '@/utils/auth'
 
 const router = createRouter({
@@ -40,6 +39,11 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/user/:id',
+      name: 'user-profile',
+      component: () => import('@/views/UserView.vue')
+    },
+    {
       path: '/chat',
       name: 'chat',
       component: () => import('@/views/ChatView.vue'),
@@ -49,6 +53,12 @@ const router = createRouter({
       path: '/chat/:userId',
       name: 'chat-user',
       component: () => import('@/views/ChatView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('@/views/NotificationsView.vue'),
       meta: { requiresAuth: true }
     }
   ]

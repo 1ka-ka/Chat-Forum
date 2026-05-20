@@ -14,5 +14,12 @@ export const chatApi = {
 
   markAsRead(userId: number) {
     return request.put<ApiResponse>(`/chat/read/${userId}`)
+  },
+
+  sendMessage(receiverId: number, content: string) {
+    return request.post<ApiResponse<Message>>('/chat/send', {
+      receiver_id: receiverId,
+      content
+    })
   }
 }

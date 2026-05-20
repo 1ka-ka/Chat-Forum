@@ -2,16 +2,18 @@
 
 #include <string>
 #include <functional>
-#include <drogon/HttpResponse.h>
+#include <drogon/drogon.h>
 
 class FileService
 {
 public:
     using Callback = std::function<void(const drogon::HttpResponsePtr &)>;
 
-    std::string saveUploadedFile(const drogon::HttpRequestPtr &req,
-                                 const std::string &fieldName,
-                                 const std::string &subDir,
-                                 int64_t userId,
-                                 size_t maxSize);
+    void saveUploadFile(int64_t userId,
+                        const std::string &filename,
+                        const std::string &fileContent,
+                        const std::string &uploadDir,
+                        Callback &&callback);
+
+    static bool isValidImageExtension(const std::string &filename);
 };

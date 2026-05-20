@@ -1,12 +1,12 @@
 #pragma once
 
-#include <drogon/HttpController.h>
+#include <drogon/drogon.h>
 
 class PostController : public drogon::HttpController<PostController>
 {
 public:
     METHOD_LIST_BEGIN
-    ADD_METHOD_TO(PostController::createPost, "/api/posts", drogon::Post, drogon::Options);
+    ADD_METHOD_TO(PostController::createPost, "/api/posts", drogon::Post, drogon::Options, "auth");
     ADD_METHOD_TO(PostController::getPostList, "/api/posts", drogon::Get, drogon::Options);
     ADD_METHOD_TO(PostController::getPostById, "/api/posts/{1}", drogon::Get, drogon::Options);
     METHOD_LIST_END

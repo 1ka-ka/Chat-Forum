@@ -1,15 +1,17 @@
 #pragma once
 
 #include <string>
-#include <regex>
+#include <vector>
 
-namespace ValidationUtil
-{
-    bool isValidUsername(const std::string &username);
-    bool isValidPassword(const std::string &password);
-    bool isValidNickname(const std::string &nickname);
-    bool isValidImageFile(const std::string &filename);
-    bool isValidPostTitle(const std::string &title);
-    bool isValidPostContent(const std::string &content);
-    bool isValidCommentContent(const std::string &content);
-}
+class ValidationUtil {
+public:
+    static bool isValidUsername(const std::string &username);
+    static bool isValidPassword(const std::string &password);
+    static bool isValidNickname(const std::string &nickname);
+    static bool isValidImageExt(const std::string &filename);
+    static bool isValidTitle(const std::string &title);
+    static bool isValidCommentContent(const std::string &content);
+
+private:
+    static bool isAlphanumericOrUnderscore(const std::string &str);
+};

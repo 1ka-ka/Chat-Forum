@@ -1,7 +1,6 @@
 #include "CommentController.h"
 #include "../services/CommentService.h"
 #include "../utils/ResponseUtil.h"
-#include <json/json.h>
 
 void CommentController::createComment(const drogon::HttpRequestPtr &req,
                                        std::function<void(const drogon::HttpResponsePtr &)> &&callback,
@@ -17,28 +16,19 @@ void CommentController::createComment(const drogon::HttpRequestPtr &req,
     }
 
     std::string content = (*json).get("content", "").asString();
+    int64_t parentCommentId = (*json).get("parent_comment_id", 0).asInt64();
 
     CommentService service;
-    service.createComment(postId, userId, content, std::move(callback));
+    service.createComment(postId, userId, content, parentCommentId, std::move(callback));
 }
 
 void CommentController::getComments(const drogon::HttpRequestPtr &req,
                                      std::function<void(const drogon::HttpResponsePtr &)> &&callback,
                                      int64_t postId)
 {
-    int page = 1, pageSize = 20;
-    std::string pageStr = std::string(req->getParameter("page"));
-    std::string pageSizeStr = std::string(req->getParameter("page_size"));
-
-    if (!pageStr.empty())
-    {
-        try { page = std::stoi(pageStr); } catch (...) {}
-    }
-    if (!pageSizeStr.empty())
-    {
-        try { pageSize = std::stoi(pageSizeStr); } catch (...) {}
-    }
+    int page = std::stoi(req->getParameter("page", "1"));
+    int pageSize = std::stoi(req->getParameter("page_size", "10"));
 
     CommentService service;
-    service.getCommentsByPostId(postId, page, pageSize, std::move(callback));
+    service.getComments(postId, page, pageSize, std::move(callback));
 }

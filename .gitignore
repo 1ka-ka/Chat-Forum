@@ -68,3 +68,14 @@ Desktop.ini
 # Config with secrets
 config/config.json
 !config/config.json.example
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Python backend uploads (user-generated content)
+python_backend/uploads/images/*
+!python_backend/uploads/images/.gitkeep
+
+# Trae documents (local teaching docs, not part of project)
+.trae/

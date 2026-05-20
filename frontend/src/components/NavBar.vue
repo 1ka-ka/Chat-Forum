@@ -1,35 +1,59 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { ElDropdown, ElDropdownMenu, ElDropdownItem, ElAvatar } from 'element-plus'
+import { ElDropdown, ElDropdownMenu, ElDropdownItem, ElAvatar, ElBadge, ElButton } from 'element-plus'
 import { isLoggedIn } from '@/utils/auth'
+import { notificationApi } from '@/api/notification'
 
 const router = useRouter()
 const userStore = useUserStore()
 
-const isAuthenticated = computed(() => isLoggedIn())
+const isAuthenticated = computed(() => !!userStore.user && isLoggedIn())
 const user = computed(() => userStore.user)
+
+const unreadCount = ref(0)
+
+async function fetchUnreadCount() {
+  if (!isLoggedIn()) return
+  try {
+    const res = await notificationApi.getUnreadCount()
+    unreadCount.value = res.data.count
+  } catch {
+  }
+}
 
 function handleCommand(command: string) {
   if (command === 'profile') {
     router.push('/profile')
   } else if (command === 'chat') {
     router.push('/chat')
+  } else if (command === 'notifications') {
+    router.push('/notifications')
   } else if (command === 'logout') {
     userStore.logout()
-    router.push('/login')
+    router.push('/')
   }
 }
+
+onMounted(() => {
+  fetchUnreadCount()
+  setInterval(fetchUnreadCount, 30000)
+})
 </script>
 
 <template>
   <nav class="navbar">
     <div class="navbar-container">
-      <RouterLink to="/" class="navbar-brand">ChatForum</RouterLink>
+      <RouterLink to="/" class="navbar-brand">畅谈</RouterLink>
 
       <div class="navbar-menu">
         <template v-if="isAuthenticated && user">
+          <ElBadge :value="unreadCount" :hidden="unreadCount === 0" :max="99">
+            <ElButton text @click="router.push('/notifications')" style="font-size: 18px">
+              🔔
+            </ElButton>
+          </ElBadge>
           <ElDropdown @command="handleCommand" trigger="click">
             <div class="user-info">
               <ElAvatar :size="32" :src="user.avatar_url || '/default-avatar.png'" />
@@ -39,6 +63,7 @@ function handleCommand(command: string) {
               <ElDropdownMenu>
                 <ElDropdownItem command="profile">个人中心</ElDropdownItem>
                 <ElDropdownItem command="chat">私信</ElDropdownItem>
+                <ElDropdownItem command="notifications">消息通知</ElDropdownItem>
                 <ElDropdownItem command="logout" divided>退出登录</ElDropdownItem>
               </ElDropdownMenu>
             </template>
@@ -81,7 +106,7 @@ function handleCommand(command: string) {
 .navbar-menu {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .nav-link {

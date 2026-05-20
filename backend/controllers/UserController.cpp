@@ -2,7 +2,6 @@
 #include "../services/UserService.h"
 #include "../services/FileService.h"
 #include "../utils/ResponseUtil.h"
-#include <json/json.h>
 
 void UserController::registerUser(const drogon::HttpRequestPtr &req,
                                    std::function<void(const drogon::HttpResponsePtr &)> &&callback)
@@ -43,6 +42,7 @@ void UserController::getProfile(const drogon::HttpRequestPtr &req,
                                  std::function<void(const drogon::HttpResponsePtr &)> &&callback)
 {
     int64_t userId = req->getAttribute<int64_t>("userId");
+
     UserService service;
     service.getProfile(userId, std::move(callback));
 }
@@ -52,26 +52,31 @@ void UserController::updateProfile(const drogon::HttpRequestPtr &req,
 {
     int64_t userId = req->getAttribute<int64_t>("userId");
 
-    std::string nickname;
+    std::string nickname = std::string(req->getParameter("nickname"));
     std::string avatarUrl;
 
-    auto json = req->getJsonObject();
-    if (json)
+    auto files = req->getFiles();
+    if (!files.empty())
     {
-        nickname = (*json).get("nickname", "").asString();
-    }
+        auto &file = files[0];
+        std::string filename = file.getFileName();
+        std::string fileContent = file.fileContent();
 
-    FileService fileService;
-    std::string uploadedAvatar = fileService.saveUploadedFile(req, "avatar", "avatars", userId, 2 * 1024 * 1024);
+        FileService fileService;
+        fileService.saveUploadFile(
+            userId, filename, fileContent, "avatars",
+            [this, userId, nickname, callback = std::move(callback)](
+                const drogon::HttpResponsePtr &fileResp) mutable {
+                auto json = fileResp->getJsonObject();
+                std::string savedPath;
+                if (json && (*json).isMember("data") && (*json)["data"].isMember("url"))
+                {
+                    savedPath = (*json)["data"]["url"].asString();
+                }
 
-    if (!uploadedAvatar.empty())
-    {
-        avatarUrl = uploadedAvatar;
-    }
-
-    if (nickname.empty() && avatarUrl.empty())
-    {
-        callback(ResponseUtil::badRequest("请提供要更新的信息"));
+                UserService service;
+                service.updateProfile(userId, nickname, savedPath, std::move(callback));
+            });
         return;
     }
 

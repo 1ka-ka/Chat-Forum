@@ -1,12 +1,11 @@
 #pragma once
 
-#include <drogon/WebSocketController.h>
+#include <drogon/drogon.h>
 #include <unordered_map>
 #include <shared_mutex>
-#include <set>
+#include <cstdint>
 
-class ChatWebSocketController : public drogon::WebSocketController<ChatWebSocketController>
-{
+class ChatWebSocketController : public drogon::WebSocketController<ChatWebSocketController> {
 public:
     WS_PATH_LIST_BEGIN
     WS_PATH_ADD("/ws/chat", drogon::Get);
@@ -14,18 +13,15 @@ public:
 
     void handleNewConnection(const drogon::HttpRequestPtr &req,
                              const drogon::WebSocketConnectionPtr &conn) override;
-
     void handleNewMessage(const drogon::WebSocketConnectionPtr &conn,
                           std::string &&message) override;
-
     void handleConnectionClosed(const drogon::WebSocketConnectionPtr &conn) override;
 
 private:
     static std::unordered_map<int64_t, drogon::WebSocketConnectionPtr> _connections;
     static std::shared_mutex _mutex;
 
-    int64_t authenticateConnection(const drogon::HttpRequestPtr &req);
     void broadcastOnlineStatus(int64_t userId, bool online);
     void sendMessageToUser(int64_t userId, const std::string &message);
-    std::string getJwtSecret() const;
+    int64_t authenticateConnection(const drogon::HttpRequestPtr &req);
 };

@@ -3,25 +3,37 @@
 Json::Value Comment::toJson() const
 {
     Json::Value val;
-    val["id"] = id;
-    val["post_id"] = postId;
-    val["content"] = content;
-    val["user_id"] = userId;
-    val["nickname"] = nickname;
-    val["avatar_url"] = avatarUrl;
-    val["created_at"] = createdAt;
+    val["id"] = static_cast<Json::Int64>(_id);
+    val["postId"] = static_cast<Json::Int64>(_postId);
+    val["userId"] = static_cast<Json::Int64>(_userId);
+
+    if (_parentCommentId.has_value())
+    {
+        val["parentCommentId"] = static_cast<Json::Int64>(_parentCommentId.value());
+    }
+    else
+    {
+        val["parentCommentId"] = Json::nullValue;
+    }
+
+    val["content"] = _content;
+    val["createdAt"] = _createdAt;
     return val;
 }
 
-Comment Comment::fromRow(const Json::Value &row)
+Comment Comment::fromResult(const drogon::orm::Row& row)
 {
-    Comment c;
-    c.id = row.isMember("id") ? row["id"].asInt64() : 0;
-    c.postId = row.isMember("post_id") ? row["post_id"].asInt64() : 0;
-    c.userId = row.isMember("user_id") ? row["user_id"].asInt64() : 0;
-    c.content = row.isMember("content") ? row["content"].asString() : "";
-    c.createdAt = row.isMember("created_at") ? row["created_at"].asString() : "";
-    c.nickname = row.isMember("nickname") ? row["nickname"].asString() : "";
-    c.avatarUrl = row.isMember("avatar_url") ? row["avatar_url"].asString() : "";
-    return c;
+    Comment comment;
+    comment._id = row["id"].as<int64_t>();
+    comment._postId = row["post_id"].as<int64_t>();
+    comment._userId = row["user_id"].as<int64_t>();
+
+    if (!row["parent_comment_id"].isNull())
+    {
+        comment._parentCommentId = row["parent_comment_id"].as<int64_t>();
+    }
+
+    comment._content = row["content"].as<std::string>();
+    comment._createdAt = row["created_at"].as<std::string>();
+    return comment;
 }

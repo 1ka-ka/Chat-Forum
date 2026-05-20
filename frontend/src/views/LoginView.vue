@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus'
 import { userApi } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const form = ref({
@@ -33,9 +34,9 @@ async function handleLogin() {
       res.data.token
     )
     ElMessage.success('登录成功')
-    router.push('/')
+    const redirect = (route.query.redirect as string) || '/'
+    router.push(redirect)
   } catch {
-    // error handled by interceptor
   } finally {
     loading.value = false
   }
@@ -45,12 +46,12 @@ async function handleLogin() {
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h2 class="login-title">登录 ChatForum</h2>
+      <h2 class="login-title">登录 畅谈</h2>
       <ElForm @submit.prevent="handleLogin">
         <ElFormItem>
           <ElInput
             v-model="form.username"
-            placeholder="用户名"
+            placeholder="账号"
             size="large"
           />
         </ElFormItem>
